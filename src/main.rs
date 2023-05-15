@@ -8,7 +8,7 @@ fn tokenize(program: &str) {
     let mut tokens: Vec<char> = Vec::new();
     for prog_char in program.chars() {
         match prog_char {
-            '>' | '<' | '+' | '-' | '.' | ',' => tokens.push(prog_char),
+            '>' | '<' | '+' | '-' | '.' | ',' | '[' | ']' => tokens.push(prog_char),
             _ => {},
         }
     }
@@ -19,24 +19,33 @@ fn tokenize(program: &str) {
 fn process(tokens: &Vec<char>) {
     let mut cells: [usize; 30000] = [0; 30000];
     let mut pointer: usize = 0;
-    for token in tokens {
+    let mut token_pointer: usize = 0;
+    let brackets_positions: Vec<(usize, usize)> = compute_brackets_positions(&tokens);
+    while token_pointer < tokens.len() {
+        // TODO Break out when lots of steps?
+        // if num_steps > MAX_STEPS {break}
+        let token = tokens[token_pointer];
         match token {
             '>' => {
                 if pointer < cells.len() - 1 {
                     pointer += 1;
+                    token_pointer += 1;
                 } // TODO Else error
             }
             '<' => {
                 if pointer > 0 {
                     pointer -= 1;
+                    token_pointer += 1;
                 } // TODO Else error
             }
             '+' => {
                 cells[pointer] += 1;
+                token_pointer += 1;
             }
             '-' => {
                 if cells[pointer] > 0 {
                     cells[pointer] -= 1;
+                    token_pointer += 1;
                 } // TODO Else error
             }
             '.' => {
@@ -52,6 +61,7 @@ fn process(tokens: &Vec<char>) {
                     }
                 }
                 io::stdout().flush().unwrap();
+                token_pointer += 1;
             }
             ',' => {
                 let mut inp: String = String::new();
@@ -66,10 +76,53 @@ fn process(tokens: &Vec<char>) {
                         // TODO Error
                     }
                 }
+                token_pointer += 1;
+            }
+            '[' => {
+                if cells[pointer] == 0 {
+                    for pair in &brackets_positions {
+                        if pair.0 == token_pointer {
+                            token_pointer = pair.1;
+                        }
+                    }
+                } else {
+                    token_pointer += 1;
+                }
+            }
+            ']' => {
+                if cells[pointer] != 0 {
+                    for pair in &brackets_positions {
+                        if pair.1 == token_pointer {
+                            token_pointer = pair.0;
+                        }
+                    }
+                } else {
+                    token_pointer += 1;
+                }
             }
             _ => {}
         }
     }
+}
+
+fn compute_brackets_positions(tokens: &Vec<char>)-> Vec<(usize, usize)> {
+    let mut open_positions: Vec<usize> = Vec::new();
+    let mut brackets_positions: Vec<(usize, usize)> = Vec::new();
+    for i in 0..tokens.len() {
+        match tokens[i] {
+            '[' => open_positions.push(i),
+            ']' => if open_positions.len() > 0 {
+                brackets_positions.push((open_positions.pop().unwrap(), i));
+            } else {
+                // TODO Unmatched Brackets Error
+            }
+            _ => {}
+        }
+    }
+    if open_positions.len() > 0 {
+        // TODO Unmatched Brackets Error
+    }
+    return brackets_positions;
 }
 
 fn main() {
